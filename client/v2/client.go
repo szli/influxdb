@@ -639,7 +639,6 @@ type ChunkedResponse struct {
 func NewChunkedResponse(r io.Reader) *ChunkedResponse {
 	resp := &ChunkedResponse{}
 	resp.duplex = &duplexReader{r: r, w: &resp.buf}
-	resp.dec = json.NewDecoder(resp.duplex)
 	resp.dec = fastjson.NewDecoder(resp.duplex)
 	resp.dec.UseNumber()
 	return resp
