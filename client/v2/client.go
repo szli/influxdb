@@ -4,9 +4,9 @@ package client // import "github.com/influxdata/influxdb/client/v2"
 import (
 	"bytes"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/json-iterator/go"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -19,6 +19,8 @@ import (
 
 	"github.com/influxdata/influxdb/models"
 )
+
+var fastjson = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // HTTPConfig is the config data needed to create an HTTP Client.
 type HTTPConfig struct {
@@ -499,7 +501,7 @@ func (c *client) Query(q Query) (*Response, error) {
 	u := c.url
 	u.Path = path.Join(u.Path, "query")
 
-	jsonParameters, err := json.Marshal(q.Parameters)
+	jsonParameters, err := fastjson.Marshal(q.Parameters)
 
 	if err != nil {
 		return nil, err
@@ -588,7 +590,7 @@ func (c *client) Query(q Query) (*Response, error) {
 			}
 		}
 	} else {
-		dec := json.NewDecoder(resp.Body)
+		dec := fastjson.NewDecoder(resp.Body)
 		dec.UseNumber()
 		decErr := dec.Decode(&response)
 
@@ -628,7 +630,7 @@ func (r *duplexReader) Read(p []byte) (n int, err error) {
 // ChunkedResponse represents a response from the server that
 // uses chunking to stream the output.
 type ChunkedResponse struct {
-	dec    *json.Decoder
+	dec    *jsoniter.Decoder
 	duplex *duplexReader
 	buf    bytes.Buffer
 }
@@ -638,6 +640,7 @@ func NewChunkedResponse(r io.Reader) *ChunkedResponse {
 	resp := &ChunkedResponse{}
 	resp.duplex = &duplexReader{r: r, w: &resp.buf}
 	resp.dec = json.NewDecoder(resp.duplex)
+	resp.dec = fastjson.NewDecoder(resp.duplex)
 	resp.dec.UseNumber()
 	return resp
 }
