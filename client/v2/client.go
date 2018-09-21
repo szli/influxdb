@@ -662,3 +662,60 @@ func (r *ChunkedResponse) NextResponse() (*Response, error) {
 	r.buf.Reset()
 	return &response, nil
 }
+
+// Query sends a command to the server and returns the Response.
+func (c *client) MsgpQuery(q Query) (*http.Response, error) {
+	u := c.url
+	u.Path = path.Join(u.Path, "query")
+
+	jsonParameters, err := fastjson.Marshal(q.Parameters)
+
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "")
+	req.Header.Set("Accept", "application/x-msgpack")
+	req.Header.Set("User-Agent", c.useragent)
+
+	if c.username != "" {
+		req.SetBasicAuth(c.username, c.password)
+	}
+
+	params := req.URL.Query()
+	params.Set("q", q.Command)
+	params.Set("db", q.Database)
+	if q.RetentionPolicy != "" {
+		params.Set("rp", q.RetentionPolicy)
+	}
+	params.Set("params", string(jsonParameters))
+	//no chunk
+	if q.Precision != "" {
+		params.Set("epoch", q.Precision)
+	}
+	req.URL.RawQuery = params.Encode()
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// If we lack a X-Influxdb-Version header, then we didn't get a response from influxdb
+	// but instead some other service. If the error code is also a 500+ code, then some
+	// downstream loadbalancer/proxy/etc had an issue and we should report that.
+	if resp.Header.Get("X-Influxdb-Version") == "" && resp.StatusCode >= http.StatusInternalServerError {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil || len(body) == 0 {
+			return nil, fmt.Errorf("received status code %d from downstream server", resp.StatusCode)
+		}
+
+		return nil, fmt.Errorf("received status code %d from downstream server, with response body: %q", resp.StatusCode, body)
+	}
+
+	return resp, nil
+}
