@@ -80,6 +80,8 @@ type Client interface {
 	// the UDP client.
 	Query(q Query) (*Response, error)
 
+	MsgpQuery(q Query) (*http.Response, error)
+
 	// Close releases any resources a Client may be using.
 	Close() error
 }
