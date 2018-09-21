@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"time"
 )
 
@@ -109,4 +110,8 @@ func (uc *udpclient) Query(q Query) (*Response, error) {
 
 func (uc *udpclient) Ping(timeout time.Duration) (time.Duration, string, error) {
 	return 0, "", nil
+}
+
+func (uc *udpclient) MsgpQuery(q Query) (*http.Response, error) {
+	return nil, fmt.Errorf("Querying via UDP is not supported")
 }
